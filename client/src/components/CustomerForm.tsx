@@ -37,33 +37,9 @@ export default function CustomerForm({
     },
   });
 
-  const handleFormSubmit = async (data: CustomerFormData) => {
+  const handleFormSubmit = (data: CustomerFormData) => {
     console.log('Customer form submitted:', data);
-    
-    if (mode === 'create') {
-      // For create mode, call the API to create the customer
-      try {
-        const response = await fetch('/api/customers', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(data),
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to create customer');
-        }
-
-        const newCustomer = await response.json();
-        onSubmit(newCustomer);
-      } catch (error) {
-        console.error('Failed to create customer:', error);
-      }
-    } else {
-      // For edit mode, pass the data to parent
-      onSubmit(data);
-    }
+    onSubmit(data);
   };
 
   const formContent = (

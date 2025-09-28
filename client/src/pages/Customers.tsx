@@ -5,19 +5,27 @@ import { Input } from "@/components/ui/input";
 import { Plus, Search, Users } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useCustomers } from "@/hooks/useCustomers";
+import CustomerDialog from "@/components/CustomerDialog";
 
 export default function Customers() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [showCustomerDialog, setShowCustomerDialog] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState<any>(null);
 
   // Fetch customers from API
   const { data: customers = [], isLoading: customersLoading } = useCustomers(searchTerm);
 
   const handleNewCustomer = () => {
-    console.log('New customer button clicked');
+    setShowCustomerDialog(true);
+    setEditingCustomer(null);
   };
 
   const handleViewCustomer = (customerId: string) => {
-    console.log('View customer:', customerId);
+    const customer = customers.find(c => c.id === customerId);
+    if (customer) {
+      setEditingCustomer(customer);
+      setShowCustomerDialog(true);
+    }
   };
 
   const handleSearch = (value: string) => {
@@ -161,6 +169,17 @@ export default function Customers() {
           </CardContent>
         </Card>
       )}
+
+      {/* Dialogs */}
+      <CustomerDialog
+        open={showCustomerDialog}
+        onOpenChange={(open) => {
+          setShowCustomerDialog(open);
+          if (!open) setEditingCustomer(null);
+        }}
+        mode={editingCustomer ? "edit" : "create"}
+        initialData={editingCustomer}
+      />
     </div>
   );
 }

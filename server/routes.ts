@@ -3,7 +3,7 @@ import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertOrderSchema, updateOrderSchema, insertCustomerSchema, updateCustomerSchema } from "@shared/schema";
-import { ZodError } from "zod";
+import { z } from "zod";
 import multer, { type FileFilterCallback } from "multer";
 import path from "path";
 import { promises as fs } from "fs";
@@ -97,7 +97,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const order = await storage.createOrder(validatedOrder);
       res.status(201).json(order);
     } catch (error) {
-      if (error instanceof ZodError) {
+      if (error instanceof z.ZodError) {
         return res.status(400).json({ error: "Validation error", details: error.errors });
       }
       console.error("Error creating order:", error);
@@ -130,7 +130,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(order);
     } catch (error) {
-      if (error instanceof ZodError) {
+      if (error instanceof z.ZodError) {
         return res.status(400).json({ error: "Validation error", details: error.errors });
       }
       console.error("Error updating order:", error);
@@ -249,7 +249,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const customer = await storage.createCustomer(validatedCustomer);
       res.status(201).json(customer);
     } catch (error) {
-      if (error instanceof ZodError) {
+      if (error instanceof z.ZodError) {
         return res.status(400).json({ error: "Validation error", details: error.errors });
       }
       console.error("Error creating customer:", error);
@@ -269,7 +269,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(customer);
     } catch (error) {
-      if (error instanceof ZodError) {
+      if (error instanceof z.ZodError) {
         return res.status(400).json({ error: "Validation error", details: error.errors });
       }
       console.error("Error updating customer:", error);
@@ -346,6 +346,132 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching upcoming reminders:", error);
       res.status(500).json({ error: "Failed to fetch upcoming reminders" });
+    }
+  });
+
+  // Seed data endpoint for testing
+  app.post("/api/seed", async (req, res) => {
+    try {
+      console.log('🌱 Seeding test data...');
+
+      // Create test customers
+      const customers = [
+        {
+          name: "Sarah Johnson",
+          phone: "+1 (555) 123-4567", 
+          email: "sarah.johnson@email.com",
+          address: "123 Oak Street, Downtown, NY 10001"
+        },
+        {
+          name: "Mike Wilson",
+          phone: "+1 (555) 234-5678",
+          email: "mike.wilson@email.com", 
+          address: "456 Pine Avenue, Midtown, NY 10002"
+        },
+        {
+          name: "Emma Thompson", 
+          phone: "+1 (555) 345-6789",
+          email: "emma.thompson@email.com",
+          address: "789 Maple Drive, Uptown, NY 10003"
+        },
+        {
+          name: "David Chen",
+          phone: "+1 (555) 456-7890",
+          email: "david.chen@email.com",
+          address: "321 Birch Lane, Suburb, NY 10004"
+        },
+        {
+          name: "Lisa Martinez",
+          phone: "+1 (555) 567-8901", 
+          email: "lisa.martinez@email.com",
+          address: "654 Cedar Court, Downtown, NY 10005"
+        }
+      ];
+
+      const createdCustomers = [];
+      for (const customerData of customers) {
+        const customer = await storage.createCustomer(customerData);
+        createdCustomers.push(customer);
+      }
+
+      // Create test orders
+      const orders = [
+        {
+          customerId: createdCustomers[0].id,
+          cakeImage: "https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=400&h=300&fit=crop",
+          writingOnCake: "Happy Birthday Emma!",
+          orderDate: "2024-01-15",
+          deliveryDate: "2024-01-22", 
+          price: "125.50",
+          status: "Pending" as const,
+          notes: "Customer wants pink and white roses decoration"
+        },
+        {
+          customerId: createdCustomers[1].id,
+          cakeImage: "https://images.unsplash.com/photo-1464349095431-e9a21285b5f3?w=400&h=300&fit=crop",
+          writingOnCake: "Congratulations!",
+          orderDate: "2024-01-14",
+          deliveryDate: "2024-01-21",
+          price: "95.00", 
+          status: "Completed" as const,
+          notes: "Anniversary cake with gold accents"
+        },
+        {
+          customerId: createdCustomers[2].id,
+          cakeImage: "https://images.unsplash.com/photo-1586985289688-ca3cf47d3e6e?w=400&h=300&fit=crop", 
+          writingOnCake: "Happy Anniversary!",
+          orderDate: "2024-01-12",
+          deliveryDate: "2024-01-28",
+          price: "180.00",
+          status: "Pending" as const,
+          notes: "Large 3-tier wedding anniversary cake"
+        },
+        {
+          customerId: createdCustomers[3].id,
+          orderDate: "2024-01-13",
+          deliveryDate: "2024-01-19",
+          price: "75.00",
+          status: "Completed" as const,
+          notes: "Simple birthday cake, no writing requested"
+        },
+        {
+          customerId: createdCustomers[4].id,
+          cakeImage: "https://images.unsplash.com/photo-1557925923-cd4648e8ac1d?w=400&h=300&fit=crop",
+          writingOnCake: "Welcome Baby!",
+          orderDate: "2024-01-16", 
+          deliveryDate: "2024-01-30",
+          price: "110.00",
+          status: "Pending" as const,
+          notes: "Baby shower cake with pastel colors"
+        },
+        {
+          customerId: createdCustomers[0].id,
+          cakeImage: "https://images.unsplash.com/photo-1571115764595-644a1f56a55c?w=400&h=300&fit=crop",
+          writingOnCake: "Happy Retirement!",
+          orderDate: "2024-01-10",
+          deliveryDate: "2024-01-17",
+          price: "65.00",
+          status: "Completed" as const
+        }
+      ];
+
+      const createdOrders = [];
+      for (const orderData of orders) {
+        const order = await storage.createOrder(orderData);
+        createdOrders.push(order);
+      }
+
+      console.log(`✅ Created ${createdCustomers.length} customers and ${createdOrders.length} orders`);
+
+      res.json({
+        success: true,
+        message: 'Seed data created successfully',
+        customers: createdCustomers.length,
+        orders: createdOrders.length
+      });
+    } catch (error) {
+      console.error('❌ Seeding failed:', error);
+      res.status(500).json({ error: 'Failed to seed data' });
     }
   });
 

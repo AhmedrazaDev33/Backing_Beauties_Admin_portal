@@ -10,9 +10,11 @@ import { DateRange } from "react-day-picker";
 import { useDashboardMetrics, useUpcomingReminders } from "@/hooks/useAnalytics";
 import { useOrders } from "@/hooks/useOrders";
 import { format } from "date-fns";
+import OrderDialog from "@/components/OrderDialog";
 
 export default function Dashboard() {
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  const [showOrderDialog, setShowOrderDialog] = useState(false);
   
   // Fetch real data from API
   const { data: metrics, isLoading: metricsLoading } = useDashboardMetrics();
@@ -29,7 +31,7 @@ export default function Dashboard() {
   const { data: recentOrders = [], isLoading: ordersLoading } = useOrders(ordersFilter);
 
   const handleNewOrder = () => {
-    console.log('New order button clicked');
+    setShowOrderDialog(true);
   };
 
   const handleViewOrder = (orderId: string) => {
@@ -154,6 +156,13 @@ export default function Dashboard() {
           )}
         </CardContent>
       </Card>
+
+      {/* Dialogs */}
+      <OrderDialog
+        open={showOrderDialog}
+        onOpenChange={setShowOrderDialog}
+        mode="create"
+      />
     </div>
   );
 }

@@ -9,11 +9,14 @@ import { useState, useMemo } from "react";
 import { DateRange } from "react-day-picker";
 import { useOrders } from "@/hooks/useOrders";
 import { format } from "date-fns";
+import OrderDialog from "@/components/OrderDialog";
 
 export default function Orders() {
   const [searchTerm, setSearchTerm] = useState("");
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [activeTab, setActiveTab] = useState<"all" | OrderStatus>("all");
+  const [showOrderDialog, setShowOrderDialog] = useState(false);
+  const [editingOrder, setEditingOrder] = useState<any>(null);
 
   // Prepare filters for API call
   const filters = useMemo(() => {
@@ -35,7 +38,8 @@ export default function Orders() {
   const { data: allOrders = [], isLoading: ordersLoading } = useOrders(filters);
 
   const handleNewOrder = () => {
-    console.log('New order button clicked');
+    setShowOrderDialog(true);
+    setEditingOrder(null);
   };
 
   const handleViewOrder = (orderId: string) => {
@@ -43,7 +47,11 @@ export default function Orders() {
   };
 
   const handleEditOrder = (orderId: string) => {
-    console.log('Edit order:', orderId);
+    const order = filteredOrders.find(o => o.id === orderId);
+    if (order) {
+      setEditingOrder(order);
+      setShowOrderDialog(true);
+    }
   };
 
   const handleSearch = (value: string) => {
@@ -192,6 +200,17 @@ export default function Orders() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Dialogs */}
+      <OrderDialog
+        open={showOrderDialog}
+        onOpenChange={(open) => {
+          setShowOrderDialog(open);
+          if (!open) setEditingOrder(null);
+        }}
+        mode={editingOrder ? "edit" : "create"}
+        initialData={editingOrder}
+      />
     </div>
   );
 }
