@@ -7,49 +7,26 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, Filter } from "lucide-react";
 import { useState } from "react";
 import { DateRange } from "react-day-picker";
+import { useDashboardMetrics, useUpcomingReminders } from "@/hooks/useAnalytics";
+import { useOrders } from "@/hooks/useOrders";
+import { format } from "date-fns";
 
 export default function Dashboard() {
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   
-  // todo: remove mock functionality
-  const mockUpcomingOrders = [
-    {
-      id: "001",
-      customerName: "Sarah Johnson",
-      deliveryDate: "Jan 20, 2024",
-      daysTillDelivery: 0
-    },
-    {
-      id: "002", 
-      customerName: "Mike Wilson",
-      deliveryDate: "Jan 21, 2024",
-      daysTillDelivery: 1
-    }
-  ];
-
-  const mockRecentOrders = [
-    {
-      id: "003",
-      customerName: "Emma Thompson",
-      cakeImage: "https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=400&h=300&fit=crop",
-      writingOnCake: "Happy Anniversary!",
-      orderDate: "2024-01-15",
-      deliveryDate: "2024-01-22",
-      price: 125.00,
-      status: "Pending" as const,
-      notes: "Customer wants pink and white roses"
-    },
-    {
-      id: "004",
-      customerName: "David Chen",
-      cakeImage: "https://images.unsplash.com/photo-1464349095431-e9a21285b5f3?w=400&h=300&fit=crop",
-      writingOnCake: "Happy Birthday Sophie!",
-      orderDate: "2024-01-14",
-      deliveryDate: "2024-01-21",
-      price: 85.50,
-      status: "Completed" as const
-    }
-  ];
+  // Fetch real data from API
+  const { data: metrics, isLoading: metricsLoading } = useDashboardMetrics();
+  const { data: upcomingReminders = [], isLoading: remindersLoading } = useUpcomingReminders(2);
+  
+  // Get recent orders with date filtering
+  const ordersFilter = dateRange?.from && dateRange?.to 
+    ? {
+        startDate: format(dateRange.from, 'yyyy-MM-dd'),
+        endDate: format(dateRange.to, 'yyyy-MM-dd')
+      }
+    : undefined;
+  
+  const { data: recentOrders = [], isLoading: ordersLoading } = useOrders(ordersFilter);
 
   const handleNewOrder = () => {
     console.log('New order button clicked');
@@ -82,19 +59,41 @@ export default function Dashboard() {
       </div>
 
       {/* Upcoming Orders Alert */}
-      <UpcomingOrdersAlert
-        upcomingOrders={mockUpcomingOrders}
-        onViewOrder={handleViewOrder}
-        onDismiss={() => console.log('Alert dismissed')}
-      />
+      {!remindersLoading && upcomingReminders.length > 0 && (
+        <UpcomingOrdersAlert
+          upcomingOrders={upcomingReminders}
+          onViewOrder={handleViewOrder}
+          onDismiss={() => console.log('Alert dismissed')}
+        />
+      )}
 
       {/* Metrics */}
-      <DashboardMetrics
-        totalOrders={156}
-        totalRevenue={8420}
-        upcomingOrders={7}
-        totalCustomers={42}
-      />
+      {metricsLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i} className="animate-pulse">
+              <CardContent className="p-6">
+                <div className="h-4 bg-muted rounded w-1/2 mb-2"></div>
+                <div className="h-8 bg-muted rounded w-3/4"></div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : metrics ? (
+        <DashboardMetrics
+          totalOrders={metrics.totalOrders}
+          totalRevenue={metrics.totalRevenue}
+          upcomingOrders={metrics.upcomingOrders}
+          totalCustomers={metrics.totalCustomers}
+        />
+      ) : (
+        <DashboardMetrics
+          totalOrders={0}
+          totalRevenue={0}
+          upcomingOrders={0}
+          totalCustomers={0}
+        />
+      )}
 
       {/* Filters */}
       <Card>
@@ -109,12 +108,32 @@ export default function Dashboard() {
           </div>
         </CardHeader>
         <CardContent>
-          {mockRecentOrders.length > 0 ? (
+          {ordersLoading ? (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {mockRecentOrders.map((order) => (
+              {[...Array(2)].map((_, i) => (
+                <Card key={i} className="animate-pulse">
+                  <CardContent className="p-6">
+                    <div className="h-4 bg-muted rounded w-1/2 mb-4"></div>
+                    <div className="h-32 bg-muted rounded mb-4"></div>
+                    <div className="h-4 bg-muted rounded w-3/4"></div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : recentOrders.length > 0 ? (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {recentOrders.slice(0, 6).map((order) => (
                 <OrderCard
                   key={order.id}
-                  {...order}
+                  id={order.id}
+                  customerName={order.customer.name}
+                  cakeImage={order.cakeImage || undefined}
+                  writingOnCake={order.writingOnCake || undefined}
+                  orderDate={format(new Date(order.orderDate), 'yyyy-MM-dd')}
+                  deliveryDate={format(new Date(order.deliveryDate), 'yyyy-MM-dd')}
+                  price={parseFloat(order.price)}
+                  status={order.status}
+                  notes={order.notes || undefined}
                   onEdit={handleEditOrder}
                   onView={handleViewOrder}
                 />
@@ -123,6 +142,14 @@ export default function Dashboard() {
           ) : (
             <div className="text-center py-8 text-muted-foreground">
               <p>No orders found for the selected date range.</p>
+              <Button 
+                onClick={handleNewOrder}
+                className="mt-4"
+                data-testid="button-create-first-order"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Create Your First Order
+              </Button>
             </div>
           )}
         </CardContent>

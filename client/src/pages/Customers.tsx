@@ -3,59 +3,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Plus, Search, Users } from "lucide-react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { useCustomers } from "@/hooks/useCustomers";
 
 export default function Customers() {
   const [searchTerm, setSearchTerm] = useState("");
 
-  // todo: remove mock functionality
-  const mockCustomers = [
-    {
-      id: "001",
-      name: "Sarah Johnson",
-      phone: "+1 (555) 123-4567",
-      email: "sarah.johnson@email.com",
-      address: "123 Oak Street, Downtown, NY 10001",
-      totalOrders: 8
-    },
-    {
-      id: "002",
-      name: "Mike Wilson",
-      phone: "+1 (555) 234-5678",
-      email: "mike.wilson@email.com",
-      address: "456 Pine Avenue, Midtown, NY 10002",
-      totalOrders: 3
-    },
-    {
-      id: "003",
-      name: "Emma Thompson",
-      phone: "+1 (555) 345-6789",
-      email: "emma.thompson@email.com",
-      address: "789 Maple Drive, Uptown, NY 10003",
-      totalOrders: 12
-    },
-    {
-      id: "004",
-      name: "David Chen",
-      phone: "+1 (555) 456-7890",
-      address: "321 Birch Lane, Suburb, NY 10004",
-      totalOrders: 5
-    },
-    {
-      id: "005",
-      name: "Lisa Martinez",
-      phone: "+1 (555) 567-8901",
-      email: "lisa.martinez@email.com",
-      address: "654 Cedar Court, Downtown, NY 10005",
-      totalOrders: 15
-    },
-    {
-      id: "006",
-      name: "Robert Taylor",
-      phone: "+1 (555) 678-9012",
-      totalOrders: 2
-    }
-  ];
+  // Fetch customers from API
+  const { data: customers = [], isLoading: customersLoading } = useCustomers(searchTerm);
 
   const handleNewCustomer = () => {
     console.log('New customer button clicked');
@@ -70,15 +25,9 @@ export default function Customers() {
     console.log('Search term:', value);
   };
 
-  const filteredCustomers = mockCustomers.filter(customer =>
-    customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    customer.phone.includes(searchTerm) ||
-    customer.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    customer.id.includes(searchTerm)
-  );
-
-  const totalCustomers = mockCustomers.length;
-  const totalOrders = mockCustomers.reduce((sum, customer) => sum + customer.totalOrders, 0);
+  // Calculate stats from real data
+  const totalCustomers = customers.length;
+  const totalOrders = customers.reduce((sum, customer) => sum + customer.totalOrders, 0);
   const avgOrdersPerCustomer = totalCustomers > 0 ? (totalOrders / totalCustomers).toFixed(1) : "0";
 
   return (
@@ -170,9 +119,21 @@ export default function Customers() {
       </Card>
 
       {/* Customers Grid */}
-      {filteredCustomers.length > 0 ? (
+      {customersLoading ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-          {filteredCustomers.map((customer) => (
+          {[...Array(6)].map((_, i) => (
+            <Card key={i} className="animate-pulse">
+              <CardContent className="p-6">
+                <div className="h-4 bg-muted rounded w-1/2 mb-4"></div>
+                <div className="h-4 bg-muted rounded w-3/4 mb-2"></div>
+                <div className="h-4 bg-muted rounded w-2/3"></div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : customers.length > 0 ? (
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+          {customers.map((customer) => (
             <CustomerCard
               key={customer.id}
               {...customer}
@@ -184,11 +145,19 @@ export default function Customers() {
         <Card>
           <CardContent className="text-center py-12">
             <p className="text-muted-foreground text-lg">
-              No customers found matching your search.
+              {searchTerm ? 'No customers found matching your search.' : 'No customers yet.'}
             </p>
             <p className="text-sm text-muted-foreground mt-2">
-              Try adjusting your search term or add a new customer.
+              {searchTerm ? 'Try adjusting your search term or add a new customer.' : 'Add your first customer to get started.'}
             </p>
+            <Button 
+              onClick={handleNewCustomer}
+              className="mt-4"
+              data-testid="button-create-first-customer"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Add Your First Customer
+            </Button>
           </CardContent>
         </Card>
       )}

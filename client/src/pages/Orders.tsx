@@ -5,58 +5,34 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Plus, Search, Filter } from "lucide-react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { DateRange } from "react-day-picker";
+import { useOrders } from "@/hooks/useOrders";
+import { format } from "date-fns";
 
 export default function Orders() {
   const [searchTerm, setSearchTerm] = useState("");
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
-  const [activeTab, setActiveTab] = useState("all");
+  const [activeTab, setActiveTab] = useState<"all" | OrderStatus>("all");
 
-  // todo: remove mock functionality
-  const mockOrders = [
-    {
-      id: "001",
-      customerName: "Sarah Johnson",
-      cakeImage: "https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=400&h=300&fit=crop",
-      writingOnCake: "Happy Birthday Emma!",
-      orderDate: "2024-01-15",
-      deliveryDate: "2024-01-20",
-      price: 85.50,
-      status: "Pending" as OrderStatus,
-      notes: "Customer requested pink roses decoration"
-    },
-    {
-      id: "002",
-      customerName: "Mike Wilson",
-      cakeImage: "https://images.unsplash.com/photo-1464349095431-e9a21285b5f3?w=400&h=300&fit=crop",
-      writingOnCake: "Congratulations!",
-      orderDate: "2024-01-14",
-      deliveryDate: "2024-01-19",
-      price: 120.00,
-      status: "Completed" as OrderStatus
-    },
-    {
-      id: "003",
-      customerName: "Emma Thompson",
-      cakeImage: "https://images.unsplash.com/photo-1586985289688-ca3cf47d3e6e?w=400&h=300&fit=crop",
-      writingOnCake: "Happy Anniversary!",
-      orderDate: "2024-01-12",
-      deliveryDate: "2024-01-18",
-      price: 95.00,
-      status: "Cancelled" as OrderStatus,
-      notes: "Customer cancelled due to change of plans"
-    },
-    {
-      id: "004",
-      customerName: "David Chen",
-      cakeImage: "https://images.unsplash.com/photo-1557925923-cd4648e8ac1d?w=400&h=300&fit=crop",
-      orderDate: "2024-01-13",
-      deliveryDate: "2024-01-21",
-      price: 75.00,
-      status: "Pending" as OrderStatus
+  // Prepare filters for API call
+  const filters = useMemo(() => {
+    const result: any = {};
+    
+    if (activeTab !== "all") {
+      result.status = activeTab;
     }
-  ];
+    
+    if (dateRange?.from && dateRange?.to) {
+      result.startDate = format(dateRange.from, 'yyyy-MM-dd');
+      result.endDate = format(dateRange.to, 'yyyy-MM-dd');
+    }
+    
+    return Object.keys(result).length > 0 ? result : undefined;
+  }, [activeTab, dateRange]);
+
+  // Fetch orders from API
+  const { data: allOrders = [], isLoading: ordersLoading } = useOrders(filters);
 
   const handleNewOrder = () => {
     console.log('New order button clicked');
@@ -75,19 +51,27 @@ export default function Orders() {
     console.log('Search term:', value);
   };
 
-  const filteredOrders = mockOrders.filter(order => {
-    const matchesTab = activeTab === "all" || order.status.toLowerCase() === activeTab;
-    const matchesSearch = order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         order.id.includes(searchTerm);
-    return matchesTab && matchesSearch;
-  });
+  // Filter orders by search term (local filtering after API fetch)
+  const filteredOrders = useMemo(() => {
+    if (!searchTerm) return allOrders;
+    
+    const term = searchTerm.toLowerCase();
+    return allOrders.filter(order =>
+      order.customer.name.toLowerCase().includes(term) ||
+      order.id.toLowerCase().includes(term) ||
+      order.customer.phone.includes(term)
+    );
+  }, [allOrders, searchTerm]);
 
+  // Calculate counts for all tabs (we need to fetch all orders for this)
+  const { data: allOrdersForCounts = [] } = useOrders();
+  
   const getOrderCounts = () => {
     return {
-      all: mockOrders.length,
-      pending: mockOrders.filter(o => o.status === "Pending").length,
-      completed: mockOrders.filter(o => o.status === "Completed").length,
-      cancelled: mockOrders.filter(o => o.status === "Cancelled").length
+      all: allOrdersForCounts.length,
+      Pending: allOrdersForCounts.filter(o => o.status === "Pending").length,
+      Completed: allOrdersForCounts.filter(o => o.status === "Completed").length,
+      Cancelled: allOrdersForCounts.filter(o => o.status === "Cancelled").length
     };
   };
 
@@ -143,24 +127,44 @@ export default function Orders() {
           <TabsTrigger value="all" data-testid="tab-all-orders">
             All ({counts.all})
           </TabsTrigger>
-          <TabsTrigger value="pending" data-testid="tab-pending-orders">
-            Pending ({counts.pending})
+          <TabsTrigger value="Pending" data-testid="tab-pending-orders">
+            Pending ({counts.Pending})
           </TabsTrigger>
-          <TabsTrigger value="completed" data-testid="tab-completed-orders">
-            Completed ({counts.completed})
+          <TabsTrigger value="Completed" data-testid="tab-completed-orders">
+            Completed ({counts.Completed})
           </TabsTrigger>
-          <TabsTrigger value="cancelled" data-testid="tab-cancelled-orders">
-            Cancelled ({counts.cancelled})
+          <TabsTrigger value="Cancelled" data-testid="tab-cancelled-orders">
+            Cancelled ({counts.Cancelled})
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value={activeTab} className="space-y-4">
-          {filteredOrders.length > 0 ? (
+          {ordersLoading ? (
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+              {[...Array(6)].map((_, i) => (
+                <Card key={i} className="animate-pulse">
+                  <CardContent className="p-6">
+                    <div className="h-4 bg-muted rounded w-1/2 mb-4"></div>
+                    <div className="h-32 bg-muted rounded mb-4"></div>
+                    <div className="h-4 bg-muted rounded w-3/4"></div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : filteredOrders.length > 0 ? (
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
               {filteredOrders.map((order) => (
                 <OrderCard
                   key={order.id}
-                  {...order}
+                  id={order.id}
+                  customerName={order.customer.name}
+                  cakeImage={order.cakeImage || undefined}
+                  writingOnCake={order.writingOnCake || undefined}
+                  orderDate={format(new Date(order.orderDate), 'yyyy-MM-dd')}
+                  deliveryDate={format(new Date(order.deliveryDate), 'yyyy-MM-dd')}
+                  price={parseFloat(order.price)}
+                  status={order.status}
+                  notes={order.notes || undefined}
                   onEdit={handleEditOrder}
                   onView={handleViewOrder}
                 />
@@ -173,8 +177,16 @@ export default function Orders() {
                   No orders found matching your criteria.
                 </p>
                 <p className="text-sm text-muted-foreground mt-2">
-                  Try adjusting your search or date filters.
+                  Try adjusting your search or date filters, or create your first order.
                 </p>
+                <Button 
+                  onClick={handleNewOrder}
+                  className="mt-4"
+                  data-testid="button-create-first-order"
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create Your First Order
+                </Button>
               </CardContent>
             </Card>
           )}
