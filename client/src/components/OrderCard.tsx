@@ -126,7 +126,7 @@ export default function OrderCard({
 
         <div className="flex items-center justify-between pt-2">
           <div className="text-lg font-bold text-primary" data-testid={`text-price-${id}`}>
-            ${price.toFixed(2)}
+            Rs {price.toFixed(2)}
           </div>
           <div className="flex gap-2">
             <Button 

@@ -23,7 +23,7 @@ export default function DashboardMetrics({
     },
     {
       title: "Total Revenue",
-      value: `$${totalRevenue.toLocaleString()}`,
+      value: `Rs ${totalRevenue.toLocaleString()}`,
       icon: DollarSign,
       description: "Total earnings"
     },

@@ -338,7 +338,7 @@ export default function OrderForm({
                 name="price"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Price * ($)</FormLabel>
+                    <FormLabel>Price * (Rs)</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
