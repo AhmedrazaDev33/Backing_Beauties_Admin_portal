@@ -67,8 +67,12 @@
 import "dotenv/config";
 import express, { type Request, Response, NextFunction } from "express";
 import path from "path";
+import { fileURLToPath } from "url"; // <-- added
 import { registerRoutes } from "./routes";
 import { createServer as createViteServer } from "vite";
+
+const __filename = fileURLToPath(import.meta.url); // <-- added
+const __dirname = path.dirname(__filename); // <-- added
 
 const isDev = process.env.NODE_ENV !== "production";
 const app = express();
@@ -79,7 +83,7 @@ app.use(express.urlencoded({ extended: false }));
 // ------------------- API Logging Middleware -------------------
 app.use((req, res, next) => {
   const start = Date.now();
-  const path = req.path;
+  const pathReq = req.path;
   let capturedJsonResponse: Record<string, any> | undefined;
 
   const originalResJson = res.json;
@@ -90,9 +94,10 @@ app.use((req, res, next) => {
 
   res.on("finish", () => {
     const duration = Date.now() - start;
-    if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
+    if (pathReq.startsWith("/api")) {
+      let logLine = `${req.method} ${pathReq} ${res.statusCode} in ${duration}ms`;
+      if (capturedJsonResponse)
+        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       if (logLine.length > 120) logLine = logLine.slice(0, 119) + "…";
       console.log(logLine);
     }
@@ -115,28 +120,25 @@ app.use((req, res, next) => {
 
   // ------------------- Frontend Handling -------------------
   if (isDev) {
-    // Vite dev server for HMR
     const vite = await createViteServer({
       server: { middlewareMode: true },
       root: path.resolve(__dirname, "../client"),
     });
-
     app.use(vite.middlewares);
-
   } else {
-    // Serve built frontend
-    const clientDist = path.resolve(__dirname, "../dist/public");
+    const clientDist = path.resolve(__dirname, "../dist/public"); // works now
     app.use(express.static(clientDist));
-
-    // SPA fallback: send index.html for any route not handled by API
     app.get("*", (_req, res) => {
       res.sendFile(path.join(clientDist, "index.html"));
     });
   }
 
-  // ------------------- Start Server -------------------
   const port = parseInt(process.env.PORT || "5000", 10);
   server.listen(port, "0.0.0.0", () => {
-    console.log(`✅ Server running on port ${port} (${isDev ? "development" : "production"})`);
+    console.log(
+      `✅ Server running on port ${port} (${
+        isDev ? "development" : "production"
+      })`
+    );
   });
 })();
